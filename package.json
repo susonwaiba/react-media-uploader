@@ -8,6 +8,16 @@
   "scripts": {
     "build": "rm -rf dist && tsc && tsc-alias"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/susonwaiba/react-media-uploader.git"
+  },
+  "author": "Suson Waiba <susonwaiba@gmail.com> (https://susonwaiba.github.io)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/susonwaiba/react-media-uploader/issues"
+  },
+  "homepage": "https://github.com/susonwaiba/react-media-uploader#readme",
   "peerDependencies": {
     "axios": ">=1",
     "react": ">=18",
