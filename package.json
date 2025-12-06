@@ -1,6 +1,6 @@
 {
   "name": "@susonwaiba/react-media-uploader",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "source": "src/index.ts",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,6 +12,14 @@
     "type": "git",
     "url": "https://github.com/susonwaiba/react-media-uploader.git"
   },
+  "keywords": [
+    "react",
+    "media",
+    "uploader",
+    "nextjs",
+    "media-uploader",
+    "react-media-uploader"
+  ],
   "author": "Suson Waiba <susonwaiba@gmail.com> (https://susonwaiba.github.io)",
   "license": "MIT",
   "bugs": {
