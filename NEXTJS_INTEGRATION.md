@@ -46,7 +46,9 @@ model Media {
 ## API endpoints
 
 - POST: `/api/media/generate-upload-url`
+
 Response:
+
 ```json
 {
     "item": {},
@@ -55,13 +57,17 @@ Response:
 ```
 
 - POST: `/api/media/mark-media-as-active`
+
 Payload:
+
 ```json
 {
     "mediaIds": []
 }
 ```
+
 Response:
+
 ```json
 {
     "items": []
@@ -69,13 +75,17 @@ Response:
 ```
 
 - POST: `/api/media/mark-media-as-canceled`
+
 Payload:
+
 ```json
 {
     "mediaIds": []
 }
 ```
+
 Response:
+
 ```json
 {
     "items": []
@@ -83,13 +93,17 @@ Response:
 ```
 
 - POST: `/api/media/mark-media-as-temp`
+
 Payload:
+
 ```json
 {
     "mediaIds": []
 }
 ```
+
 Response:
+
 ```json
 {
     "items": []
