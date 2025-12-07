@@ -47,12 +47,24 @@ model Media {
 
 - POST: `/api/media/generate-upload-url`
 
+Payload:
+
+```json
+{
+    "type": "IMAGE",
+    "name": "screenshot.jpeg",
+    "mimeType": "image/jpeg",
+    "size": 40868,
+    "checksum": "b745eb078c31eaa2ef5d87f772bbf37d78528d3c"
+}
+```
+
 Response:
 
 ```json
 {
     "item": {},
-    "sasUrl": "<sas_upload_url>"
+    "uploadUrl": "<upload_url_with_token>"
 }
 ```
 

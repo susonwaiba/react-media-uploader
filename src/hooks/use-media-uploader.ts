@@ -20,6 +20,15 @@ export interface UseMediaUploaderProps<T extends object> {
   defaultValues?: T;
   mediaUploadSuccessStatus?: MediaStatusEnum;
   enableManualUpload?: boolean;
+  serverConfig?: {
+    additionalHeaders?: Record<string, string>;
+    generateUploadUrl?: string;
+    markMediaAsTemp?: string;
+    markMediaAsActive?: string;
+    markMediaAsCanceled?: string;
+  };
+  onUploadSuccess?: (currentValues: any) => Promise<void>;
+  onUploadFailure?: (uploadRes: any) => Promise<void>;
 }
 
 export interface UseMediaUploaderResponse<T extends object> {
@@ -28,6 +37,7 @@ export interface UseMediaUploaderResponse<T extends object> {
   enableManualUpload?: boolean;
   uploadManually: () => Promise<T>;
   mediaItems: Record<string, MediaItem>;
+  setMediaItems: (items: Record<string, MediaItem>) => void;
   uploadInfos: Record<string, UploadMediaInfo>;
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
   onFileChange: (file: File, name: string, multiple?: boolean) => Promise<void>;
@@ -37,6 +47,9 @@ export function useMediaUploader<T extends object>({
   defaultValues,
   mediaUploadSuccessStatus = MediaStatusEnum.TEMP,
   enableManualUpload = false,
+  serverConfig,
+  onUploadSuccess,
+  onUploadFailure,
 }: UseMediaUploaderProps<T> = {}): UseMediaUploaderResponse<T> {
   const [values, setValues] = useState<T>(defaultValues ?? ({} as T));
   const [mediaItems, setMediaItems] = useState<Record<string, MediaItem>>({});
@@ -45,7 +58,6 @@ export function useMediaUploader<T extends object>({
   >({});
 
   const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("onFileInputChange -> e ->", e);
     const target = e.target as any;
     const name = target.name;
     const multiple = target.multiple || false;
@@ -87,7 +99,11 @@ export function useMediaUploader<T extends object>({
   };
 
   const uploadMediaFile = async (item: MediaItem): Promise<T | undefined> => {
-    const sasUrlRes = await generateUploadUrl({ media: item?.media });
+    const sasUrlRes = await generateUploadUrl({
+      url: serverConfig?.generateUploadUrl,
+      additionalHeaders: serverConfig?.additionalHeaders,
+      media: item?.media,
+    });
     if (sasUrlRes?.data?.item && sasUrlRes?.data?.sasUrl) {
       item["media"] = sasUrlRes?.data?.item;
       setMediaItems((previous) => {
@@ -98,7 +114,7 @@ export function useMediaUploader<T extends object>({
 
       const abortController = new AbortController();
       const uploadRes = await uploadToStorage({
-        sasUrl: sasUrlRes?.data?.sasUrl,
+        uploadUrl: sasUrlRes?.data?.uploadUrl,
         file: item.file,
         onUploadProgress: (progressEvent) => {
           const currentUploadInfo = {
@@ -114,6 +130,8 @@ export function useMediaUploader<T extends object>({
                 return newState;
               });
               await markMediaAsCanceled({
+                url: serverConfig?.markMediaAsCanceled,
+                additionalHeaders: serverConfig?.additionalHeaders,
                 mediaIds: [sasUrlRes?.data?.item?.id],
               });
             },
@@ -126,10 +144,10 @@ export function useMediaUploader<T extends object>({
         },
         abortController,
       });
-      if (uploadRes?.status === 201) {
+      if (uploadRes?.status === 201 || uploadRes?.status === 200) {
         return await onMediaUploadSuccess(item);
-      } else {
-        console.log("Media upload failed");
+      } else if (onUploadFailure) {
+        onUploadFailure(uploadRes);
       }
     }
     return undefined;
@@ -148,10 +166,14 @@ export function useMediaUploader<T extends object>({
         | undefined;
       if (mediaUploadSuccessStatus === MediaStatusEnum.TEMP) {
         markRes = await markMediaAsTemp({
+          url: serverConfig?.markMediaAsTemp,
+          additionalHeaders: serverConfig?.additionalHeaders,
           mediaIds: [item.media.id],
         });
       } else if (mediaUploadSuccessStatus === MediaStatusEnum.ACTIVE) {
         markRes = await markMediaAsActive({
+          url: serverConfig?.markMediaAsActive,
+          additionalHeaders: serverConfig?.additionalHeaders,
           mediaIds: [item.media.id],
         });
       }
@@ -184,7 +206,9 @@ export function useMediaUploader<T extends object>({
           }
           return newState;
         });
-        console.log("Media uploaded successfully");
+        if (onUploadSuccess) {
+          onUploadSuccess(currentValues);
+        }
         return currentValues;
       }
     }
@@ -199,7 +223,6 @@ export function useMediaUploader<T extends object>({
     const uploadResponses = await Promise.all(
       mediaItemsToBeUploaded?.map(async (item) => await uploadMediaFile(item)),
     );
-    console.log("uploadResponses ->", uploadResponses);
     const result: any = { ...values };
     for (const uploadResponse of uploadResponses.filter(
       (item) => item !== undefined,
@@ -230,6 +253,7 @@ export function useMediaUploader<T extends object>({
     enableManualUpload,
     uploadManually,
     mediaItems,
+    setMediaItems,
     uploadInfos,
     onFileInputChange,
     onFileChange,

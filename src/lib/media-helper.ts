@@ -37,30 +37,39 @@ export const defaultHeaders = {
 };
 
 export interface GenerateUploadUrlProps {
+  url?: string;
+  additionalHeaders?: Record<string, string>;
   media: Partial<Media>;
 }
 
-export async function generateUploadUrl({ media }: GenerateUploadUrlProps) {
-  const res = await axios.post("/api/media/generate-upload-url", media, {
-    headers: defaultHeaders,
+export async function generateUploadUrl({
+  url,
+  additionalHeaders,
+  media,
+}: GenerateUploadUrlProps) {
+  const res = await axios.post(url ?? "/api/media/generate-upload-url", media, {
+    headers: {
+      ...defaultHeaders,
+      ...additionalHeaders,
+    },
   });
   return res;
 }
 
 export interface UploadToStorageProps {
-  sasUrl: string;
+  uploadUrl: string;
   file: File;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
   abortController?: AbortController;
 }
 
 export async function uploadToStorage({
-  sasUrl,
+  uploadUrl,
   file,
   onUploadProgress,
   abortController,
 }: UploadToStorageProps) {
-  const res = await axios.put(sasUrl, file, {
+  const res = await axios.put(uploadUrl, file, {
     headers: {
       "x-ms-blob-type": "BlockBlob",
       "Content-Type": file.type,
@@ -72,47 +81,72 @@ export async function uploadToStorage({
 }
 
 export interface MarkMediaAsTempProps {
+  url?: string;
+  additionalHeaders?: Record<string, string>;
   mediaIds: (string | number)[];
 }
 
-export async function markMediaAsTemp({ mediaIds }: MarkMediaAsTempProps) {
+export async function markMediaAsTemp({
+  url,
+  additionalHeaders,
+  mediaIds,
+}: MarkMediaAsTempProps) {
   const res = await axios.post(
-    `/api/media/mark-media-as-temp`,
+    url ?? `/api/media/mark-media-as-temp`,
     { mediaIds },
     {
-      headers: defaultHeaders,
+      headers: {
+        ...defaultHeaders,
+        ...additionalHeaders,
+      },
     },
   );
   return res;
 }
 
 export interface MarkMediaAsActiveProps {
+  url?: string;
+  additionalHeaders?: Record<string, string>;
   mediaIds: (string | number)[];
 }
 
-export async function markMediaAsActive({ mediaIds }: MarkMediaAsActiveProps) {
+export async function markMediaAsActive({
+  url,
+  additionalHeaders,
+  mediaIds,
+}: MarkMediaAsActiveProps) {
   const res = await axios.post(
-    `/api/media/mark-media-as-active`,
+    url ?? `/api/media/mark-media-as-active`,
     { mediaIds },
     {
-      headers: defaultHeaders,
+      headers: {
+        ...defaultHeaders,
+        ...additionalHeaders,
+      },
     },
   );
   return res;
 }
 
 export interface MarkMediaAsCanceledProps {
+  url?: string;
+  additionalHeaders?: Record<string, string>;
   mediaIds: (string | number)[];
 }
 
 export async function markMediaAsCanceled({
+  url,
+  additionalHeaders,
   mediaIds,
 }: MarkMediaAsActiveProps) {
   const res = await axios.post(
-    `/api/media/mark-media-as-canceled`,
+    url ?? `/api/media/mark-media-as-canceled`,
     [mediaIds],
     {
-      headers: defaultHeaders,
+      headers: {
+        ...defaultHeaders,
+        ...additionalHeaders,
+      },
     },
   );
   return res;
