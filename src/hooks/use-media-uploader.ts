@@ -99,13 +99,13 @@ export function useMediaUploader<T extends object>({
   };
 
   const uploadMediaFile = async (item: MediaItem): Promise<T | undefined> => {
-    const sasUrlRes = await generateUploadUrl({
+    const uploadUrlRes = await generateUploadUrl({
       url: serverConfig?.generateUploadUrl,
       additionalHeaders: serverConfig?.additionalHeaders,
       media: item?.media,
     });
-    if (sasUrlRes?.data?.item && sasUrlRes?.data?.sasUrl) {
-      item["media"] = sasUrlRes?.data?.item;
+    if (uploadUrlRes?.data?.item && uploadUrlRes?.data?.uploadUrl) {
+      item["media"] = uploadUrlRes?.data?.item;
       setMediaItems((previous) => {
         const newState = { ...previous };
         newState[item.localId] = item;
@@ -114,7 +114,7 @@ export function useMediaUploader<T extends object>({
 
       const abortController = new AbortController();
       const uploadRes = await uploadToStorage({
-        uploadUrl: sasUrlRes?.data?.uploadUrl,
+        uploadUrl: uploadUrlRes?.data?.uploadUrl,
         file: item.file,
         onUploadProgress: (progressEvent) => {
           const currentUploadInfo = {
@@ -132,7 +132,7 @@ export function useMediaUploader<T extends object>({
               await markMediaAsCanceled({
                 url: serverConfig?.markMediaAsCanceled,
                 additionalHeaders: serverConfig?.additionalHeaders,
-                mediaIds: [sasUrlRes?.data?.item?.id],
+                mediaIds: [uploadUrlRes?.data?.item?.id],
               });
             },
           };
