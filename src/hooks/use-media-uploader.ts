@@ -7,7 +7,12 @@ import {
   markMediaAsActive,
   generateMediaType,
 } from "@/lib/media-helper";
-import { type Media, MediaStatusEnum, type MediaItem } from "@/types/media";
+import {
+  type Media,
+  MediaStatusEnum,
+  type MediaItem,
+  MediaTypeEnum,
+} from "@/types/media";
 import { type AxiosProgressEvent } from "axios";
 import { useState } from "react";
 
@@ -23,9 +28,21 @@ export interface UseMediaUploaderProps<T extends object> {
   serverConfig?: {
     additionalHeaders?: Record<string, string>;
     generateUploadUrl?: string;
+    onGenerateUploadUrl?: (
+      media: Partial<Media>,
+    ) => Promise<{ item: Media; uploadUrl: string }>;
     markMediaAsTemp?: string;
+    onMarkMediaAsTemp?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
     markMediaAsActive?: string;
+    onMarkMediaAsActive?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
     markMediaAsCanceled?: string;
+    onMarkMediaAsCanceled?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
   };
   onUploadSuccess?: (currentValues: any) => Promise<void>;
   onUploadFailure?: (uploadRes: any) => Promise<void>;
@@ -74,14 +91,19 @@ export function useMediaUploader<T extends object>({
     multiple: boolean = false,
   ) => {
     const localId = crypto.randomUUID();
+    const mediaType = await generateMediaType(file);
+    let tempPreviewUrl: string | undefined = undefined;
+    if (mediaType === MediaTypeEnum.IMAGE) {
+      tempPreviewUrl = URL.createObjectURL(file);
+    }
     const item: MediaItem = {
       localId,
       name,
       multiple,
       file,
-      tempPreviewUrl: URL.createObjectURL(file),
+      tempPreviewUrl,
       media: {
-        type: await generateMediaType(file),
+        type: mediaType,
         name: file.name,
         mimeType: file.type,
         size: file.size,
@@ -93,19 +115,35 @@ export function useMediaUploader<T extends object>({
       newState[localId] = item;
       return newState;
     });
+    setValues((previous) => {
+      const newState = { ...previous };
+      newState[name] = tempPreviewUrl;
+      return newState;
+    });
     if (!enableManualUpload) {
-      uploadMediaFile(item);
+      await uploadMediaFile(item);
     }
   };
 
   const uploadMediaFile = async (item: MediaItem): Promise<T | undefined> => {
-    const uploadUrlRes = await generateUploadUrl({
-      url: serverConfig?.generateUploadUrl,
-      additionalHeaders: serverConfig?.additionalHeaders,
-      media: item?.media,
-    });
-    if (uploadUrlRes?.data?.item && uploadUrlRes?.data?.uploadUrl) {
-      item["media"] = uploadUrlRes?.data?.item;
+    let uploadData:
+      | {
+          item: Media;
+          uploadUrl: string;
+        }
+      | undefined;
+    if (serverConfig?.onGenerateUploadUrl) {
+      uploadData = await serverConfig?.onGenerateUploadUrl(item?.media);
+    } else {
+      const uploadUrlRes = await generateUploadUrl({
+        url: serverConfig?.generateUploadUrl,
+        additionalHeaders: serverConfig?.additionalHeaders,
+        media: item?.media,
+      });
+      uploadData = uploadUrlRes.data;
+    }
+    if (uploadData?.item && uploadData?.uploadUrl) {
+      item["media"] = uploadData?.item;
       setMediaItems((previous) => {
         const newState = { ...previous };
         newState[item.localId] = item;
@@ -114,7 +152,7 @@ export function useMediaUploader<T extends object>({
 
       const abortController = new AbortController();
       const uploadRes = await uploadToStorage({
-        uploadUrl: uploadUrlRes?.data?.uploadUrl,
+        uploadUrl: uploadData?.uploadUrl,
         file: item.file,
         onUploadProgress: (progressEvent) => {
           const currentUploadInfo = {
@@ -129,11 +167,17 @@ export function useMediaUploader<T extends object>({
                 }
                 return newState;
               });
-              await markMediaAsCanceled({
-                url: serverConfig?.markMediaAsCanceled,
-                additionalHeaders: serverConfig?.additionalHeaders,
-                mediaIds: [uploadUrlRes?.data?.item?.id],
-              });
+              if (serverConfig?.markMediaAsCanceled) {
+                await markMediaAsCanceled({
+                  url: serverConfig?.markMediaAsCanceled,
+                  additionalHeaders: serverConfig?.additionalHeaders,
+                  mediaIds: [uploadData?.item?.id],
+                });
+              } else if (serverConfig?.onMarkMediaAsCanceled) {
+                await serverConfig.onMarkMediaAsCanceled([
+                  uploadData?.item?.id,
+                ]);
+              }
             },
           };
           setUploadInfos((previous) => {
@@ -147,7 +191,7 @@ export function useMediaUploader<T extends object>({
       if (uploadRes?.status === 201 || uploadRes?.status === 200) {
         return await onMediaUploadSuccess(item);
       } else if (onUploadFailure) {
-        onUploadFailure(uploadRes);
+        await onUploadFailure(uploadRes);
       }
     }
     return undefined;
@@ -157,28 +201,38 @@ export function useMediaUploader<T extends object>({
     item: MediaItem,
   ): Promise<T | undefined> => {
     if (item.media.id) {
-      let markRes:
-        | {
-            data?: {
-              items?: Array<Media>;
-            };
-          }
-        | undefined;
+      let markResItems: Partial<Media>[] = [];
       if (mediaUploadSuccessStatus === MediaStatusEnum.TEMP) {
-        markRes = await markMediaAsTemp({
-          url: serverConfig?.markMediaAsTemp,
-          additionalHeaders: serverConfig?.additionalHeaders,
-          mediaIds: [item.media.id],
-        });
+        if (serverConfig?.onMarkMediaAsTemp) {
+          markResItems = await serverConfig.onMarkMediaAsTemp([item.media.id]);
+        } else {
+          const res = await markMediaAsTemp({
+            url: serverConfig?.markMediaAsTemp,
+            additionalHeaders: serverConfig?.additionalHeaders,
+            mediaIds: [item.media.id],
+          });
+          if (res?.data?.items?.length) {
+            markResItems = res.data.items;
+          }
+        }
       } else if (mediaUploadSuccessStatus === MediaStatusEnum.ACTIVE) {
-        markRes = await markMediaAsActive({
-          url: serverConfig?.markMediaAsActive,
-          additionalHeaders: serverConfig?.additionalHeaders,
-          mediaIds: [item.media.id],
-        });
+        if (serverConfig.onMarkMediaAsActive) {
+          markResItems = await serverConfig.onMarkMediaAsActive([
+            item.media.id,
+          ]);
+        } else {
+          const res = await markMediaAsActive({
+            url: serverConfig?.markMediaAsActive,
+            additionalHeaders: serverConfig?.additionalHeaders,
+            mediaIds: [item.media.id],
+          });
+          if (res?.data?.items?.length) {
+            markResItems = res.data.items;
+          }
+        }
       }
-      if (markRes?.data?.items?.length && markRes.data.items[0]) {
-        const newMedia = markRes.data.items[0];
+      if (markResItems?.length) {
+        const newMedia = markResItems[0];
 
         item["media"] = newMedia;
         setMediaItems((previous) => {
@@ -207,7 +261,7 @@ export function useMediaUploader<T extends object>({
           return newState;
         });
         if (onUploadSuccess) {
-          onUploadSuccess(currentValues);
+          await onUploadSuccess(currentValues);
         }
         return currentValues;
       }
