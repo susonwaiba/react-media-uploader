@@ -80,9 +80,21 @@ export interface UseMediaUploaderProps<T extends object> {
   serverConfig?: {
     additionalHeaders?: Record<string, string>;
     generateUploadUrl?: string;
+    onGenerateUploadUrl?: (
+      media: Partial<Media>,
+    ) => Promise<{ item: Media; uploadUrl: string }>;
     markMediaAsTemp?: string;
+    onMarkMediaAsTemp?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
     markMediaAsActive?: string;
+    onMarkMediaAsActive?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
     markMediaAsCanceled?: string;
+    onMarkMediaAsCanceled?: (
+      mediaIds: (string | number)[],
+    ) => Promise<Partial<Media>[]>;
   };
   onUploadSuccess?: (currentValues: any) => Promise<void>;
   onUploadFailure?: (uploadRes: any) => Promise<void>;
