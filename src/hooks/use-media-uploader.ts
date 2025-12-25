@@ -6,6 +6,7 @@ import {
   markMediaAsTemp,
   markMediaAsActive,
   generateMediaType,
+  getMediaImageDimension,
 } from "@/lib/media-helper";
 import {
   type Media,
@@ -93,8 +94,17 @@ export function useMediaUploader<T extends object>({
     const localId = crypto.randomUUID();
     const mediaType = await generateMediaType(file);
     let tempPreviewUrl: string | undefined = undefined;
+    let tempHeight: number | undefined = undefined;
+    let tempWidth: number | undefined = undefined;
     if (mediaType === MediaTypeEnum.IMAGE) {
       tempPreviewUrl = URL.createObjectURL(file);
+      try {
+        const tempDimension = await getMediaImageDimension(tempPreviewUrl);
+        tempHeight = tempDimension.height;
+        tempWidth = tempDimension.width;
+      } catch (e) {
+        console.log("Error while generating media image dimension ->", e);
+      }
     }
     const item: MediaItem = {
       localId,
@@ -107,6 +117,8 @@ export function useMediaUploader<T extends object>({
         name: file.name,
         mimeType: file.type,
         size: file.size,
+        height: tempHeight,
+        width: tempWidth,
         checksum: await generateFileHash(file),
       },
     };

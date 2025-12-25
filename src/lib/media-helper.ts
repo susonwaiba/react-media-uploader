@@ -151,3 +151,20 @@ export async function markMediaAsCanceled({
   );
   return res;
 }
+
+export async function getMediaImageDimension(imageUrl: string): Promise<{
+  height: number;
+  width: number;
+}> {
+  return new Promise((res, rej) => {
+    const tempImg = new Image();
+    tempImg.src = imageUrl;
+    tempImg.onload = () => {
+      res({
+        height: tempImg.naturalHeight,
+        width: tempImg.naturalWidth,
+      });
+    };
+    tempImg.onerror = () => rej(new Error(`Failed to load image: ${imageUrl}`));
+  });
+}
