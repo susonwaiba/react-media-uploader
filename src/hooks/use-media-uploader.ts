@@ -179,16 +179,16 @@ export function useMediaUploader<T extends object>({
                 }
                 return newState;
               });
-              if (serverConfig?.markMediaAsCanceled) {
+              if (serverConfig?.onMarkMediaAsCanceled) {
+                await serverConfig.onMarkMediaAsCanceled([
+                  uploadData?.item?.id,
+                ]);
+              } else {
                 await markMediaAsCanceled({
                   url: serverConfig?.markMediaAsCanceled,
                   additionalHeaders: serverConfig?.additionalHeaders,
                   mediaIds: [uploadData?.item?.id],
                 });
-              } else if (serverConfig?.onMarkMediaAsCanceled) {
-                await serverConfig.onMarkMediaAsCanceled([
-                  uploadData?.item?.id,
-                ]);
               }
             },
           };
